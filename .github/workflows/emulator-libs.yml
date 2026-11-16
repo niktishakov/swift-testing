@@ -1,0 +1,33 @@
+name: Emulator libraries on a clean Ubuntu
+on:
+  push:
+    branches: [android-doc-ci]
+    paths: ['.github/workflows/emulator-libs.yml']
+jobs:
+  libs:
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    steps:
+      - name: Missing shared libraries of the emulator in a bare ubuntu:24.04
+        run: |
+          apt-get update -qq && apt-get install -y -qq curl unzip openjdk-17-jdk-headless >/dev/null
+          export ANDROID_HOME="$HOME/android-sdk"
+          mkdir -p "$ANDROID_HOME/cmdline-tools"
+          curl -fsSLO https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
+          unzip -q commandlinetools-*_latest.zip -d "$ANDROID_HOME/cmdline-tools"
+          mv "$ANDROID_HOME/cmdline-tools/cmdline-tools" "$ANDROID_HOME/cmdline-tools/latest"
+          export PATH="$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"
+          (yes || true) | sdkmanager --install "emulator" "platform-tools" > /dev/null
+          echo "== adb"; ldd "$ANDROID_HOME/platform-tools/adb" | grep 'not found' || echo "adb: all found"
+          echo "== emulator binaries with missing libraries"
+          for f in "$ANDROID_HOME/emulator/emulator" "$ANDROID_HOME"/emulator/qemu/linux-x86_64/qemu-system-x86_64*; do
+            [ -f "$f" ] || continue
+            m=$(LD_LIBRARY_PATH="$ANDROID_HOME/emulator/lib64:$ANDROID_HOME/emulator/lib64/qt/lib" ldd "$f" | grep 'not found' | sort -u)
+            echo "$f:"; echo "${m:-  all found}"
+          done
+          echo "== emulator -version"; emulator -version 2>&1 | head -5 || true
+          echo "== which packages the base image lacks for them"
+          apt-get install -y -qq apt-file >/dev/null && apt-file update >/dev/null
+          for lib in $(LD_LIBRARY_PATH="$ANDROID_HOME/emulator/lib64:$ANDROID_HOME/emulator/lib64/qt/lib" ldd "$ANDROID_HOME"/emulator/qemu/linux-x86_64/qemu-system-x86_64 | awk '/not found/{print $1}' | sort -u); do
+            echo "$lib -> $(apt-file search -l "/$lib" | head -3 | tr '\n' ' ')"
+          done

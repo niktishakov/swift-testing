@@ -2,6 +2,7 @@ name: Android.md on clean x86-64 Linux
 on:
   push:
     branches: [android-doc-ci]
+    paths: ['Documentation/Android.md', '.github/doc-check/**']
   workflow_dispatch:
 jobs:
   doc:
