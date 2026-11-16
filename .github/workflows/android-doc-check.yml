@@ -46,7 +46,12 @@ jobs:
           python3 .github/doc-check/extract.py
           cat doc-steps.sh
           # Drop the runner's preinstalled Android SDK variables, as on a clean machine.
-          env -u ANDROID_HOME -u ANDROID_SDK_ROOT -u ANDROID_NDK -u ANDROID_NDK_ROOT -u ANDROID_NDK_LATEST_HOME bash doc-steps.sh 2>&1 | tee doc-run.log
+          set +e
+          env -u ANDROID_HOME -u ANDROID_SDK_ROOT -u ANDROID_NDK -u ANDROID_NDK_ROOT -u ANDROID_NDK_LATEST_HOME bash doc-steps.sh > doc-run.log 2>&1
+          rc=$?
+          pkill -f qemu-system || true; pkill adb || true
+          cat doc-run.log
+          exit $rc
       - if: always()
         uses: actions/upload-artifact@v4
         with:
