@@ -1,0 +1,53 @@
+name: Android.md on clean x86-64 Linux
+on:
+  push:
+    branches: [android-doc-ci]
+  workflow_dispatch:
+jobs:
+  doc:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Host info
+        run: |
+          uname -m; lsb_release -ds; java -version 2>&1 | head -1
+          echo "runner ANDROID_HOME=${ANDROID_HOME:-}"; which sdkmanager || echo "no sdkmanager on PATH"
+      - name: Enable KVM (runner setup, not a doc step)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          ls -l /dev/kvm
+      - name: swift.org guide - toolchain with swiftly (main snapshot 2026-11-01)
+        run: |
+          curl -fsSLO "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
+          tar zxf "swiftly-$(uname -m).tar.gz"
+          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
+          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+          swiftly install --use main-snapshot-2026-11-01
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          hash -r; swift --version
+      - name: swift.org guide - Swift SDK for Android and NDK r30
+        run: |
+          swift sdk install https://download.swift.org/development/android-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a/swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a_android.artifactbundle.tar.gz --checksum 110f044ab7a8f3707de3a7b2104adce4fd7b137de19116721295942c3b75d3d7
+          swift sdk list
+          cd "$HOME"
+          curl -fSL -o ndk.zip "https://dl.google.com/android/repository/android-ndk-r30-$(uname -s).zip"
+          unzip -qo ndk.zip
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r30" >> "$GITHUB_ENV"
+          find ~/.swiftpm ~/.config/swiftpm -maxdepth 5 \( -name ndk-sysroot -o -name setup-android-sdk.sh \) 2>/dev/null
+      - name: Download the command-line tools zip (user download, not a doc command)
+        run: curl -fsSLO https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
+      - name: Run Android.md sh blocks verbatim (only x86-64 substitutions)
+        run: |
+          python3 .github/doc-check/extract.py
+          cat doc-steps.sh
+          # Drop the runner's preinstalled Android SDK variables, as on a clean machine.
+          env -u ANDROID_HOME -u ANDROID_SDK_ROOT -u ANDROID_NDK -u ANDROID_NDK_ROOT -u ANDROID_NDK_LATEST_HOME bash doc-steps.sh 2>&1 | tee doc-run.log
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: doc-run
+          path: |
+            doc-steps.sh
+            doc-run.log
