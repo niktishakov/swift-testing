@@ -25,7 +25,9 @@ jobs:
           tar zxf "swiftly-$(uname -m).tar.gz"
           ./swiftly init --quiet-shell-followup --assume-yes --skip-install
           . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
-          swiftly install --use main-snapshot-2026-11-01
+          swiftly install --use --post-install-file post-install.sh main-snapshot-2026-11-01
+          # swiftly prints the system packages the toolchain needs; install them as it says.
+          cat post-install.sh; sudo bash post-install.sh
           echo "PATH=$PATH" >> "$GITHUB_ENV"
           hash -r; swift --version
       - name: swift.org guide - Swift SDK for Android and NDK r30
