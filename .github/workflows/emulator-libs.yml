@@ -31,3 +31,11 @@ jobs:
           for lib in $(LD_LIBRARY_PATH="$ANDROID_HOME/emulator/lib64:$ANDROID_HOME/emulator/lib64/qt/lib" ldd "$ANDROID_HOME"/emulator/qemu/linux-x86_64/qemu-system-x86_64 | awk '/not found/{print $1}' | sort -u); do
             echo "$lib -> $(apt-file search -l "/$lib" | head -3 | tr '\n' ' ')"
           done
+          echo "== after apt-get install libx11-6 only"
+          apt-get install -y -qq libx11-6 >/dev/null
+          for f in "$ANDROID_HOME/emulator/emulator" "$ANDROID_HOME"/emulator/qemu/linux-x86_64/qemu-system-x86_64-headless; do
+            m=$(LD_LIBRARY_PATH="$ANDROID_HOME/emulator/lib64:$ANDROID_HOME/emulator/lib64/qt/lib" ldd "$f" | grep 'not found' | sort -u)
+            echo "$f:"; echo "${m:-  all found}"
+          done
+          emulator -version 2>&1 | head -2
+          ls -l /dev/kvm 2>&1 || true
