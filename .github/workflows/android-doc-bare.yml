@@ -11,6 +11,11 @@ jobs:
     timeout-minutes: 90
     env:
       DEBIAN_FRONTEND: noninteractive
+      # GitHub sets HOME=/github/home in containers; swiftly uses root's home.
+      HOME: /root
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - name: Only what the swift.org guide downloads with (curl, unzip)
