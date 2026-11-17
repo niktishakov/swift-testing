@@ -1,0 +1,45 @@
+name: Android.md in a bare ubuntu:24.04 (no emulator)
+on:
+  push:
+    branches: [android-doc-ci]
+    paths: ['Documentation/Android.md', '.github/doc-check/**', '.github/workflows/android-doc-bare.yml']
+  workflow_dispatch:
+jobs:
+  bare:
+    runs-on: ubuntu-24.04
+    container: ubuntu:24.04
+    timeout-minutes: 90
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v4
+      - name: Only what the swift.org guide downloads with (curl, unzip)
+        run: apt-get update -qq && apt-get install -y -qq curl ca-certificates unzip python3 >/dev/null
+      - name: swift.org guide - toolchain with swiftly
+        run: |
+          curl -fsSLO "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"
+          tar zxf "swiftly-$(uname -m).tar.gz"
+          ./swiftly init --quiet-shell-followup --assume-yes --skip-install
+          . "${SWIFTLY_HOME_DIR:-$HOME/.local/share/swiftly}/env.sh"
+          swiftly install --use --post-install-file post-install.sh main-snapshot-2026-11-01
+          cat post-install.sh; bash post-install.sh
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          hash -r; swift --version
+      - name: swift.org guide - Swift SDK for Android and NDK r30
+        run: |
+          swift sdk install https://download.swift.org/development/android-sdk/swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a/swift-DEVELOPMENT-SNAPSHOT-2026-11-01-a_android.artifactbundle.tar.gz --checksum 110f044ab7a8f3707de3a7b2104adce4fd7b137de19116721295942c3b75d3d7
+          cd "$HOME"
+          curl -fSL -o ndk.zip "https://dl.google.com/android/repository/android-ndk-r30-$(uname -s).zip"
+          unzip -qo ndk.zip
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk-r30" >> "$GITHUB_ENV"
+      - name: Android.md - JDK 17 and the command-line tools zip
+        run: |
+          apt-get install -y -qq openjdk-17-jdk-headless >/dev/null
+          curl -fsSLO https://dl.google.com/android/repository/commandlinetools-linux-15859902_latest.zip
+      - name: Run Android.md sh blocks without emulator and adb
+        run: |
+          python3 .github/doc-check/extract.py --no-device
+          cat doc-steps.sh
+          bash doc-steps.sh
+          ls -la android-tests | head -50
+          echo "files: $(ls android-tests | wc -l)"
