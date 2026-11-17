@@ -18,8 +18,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Only what the swift.org guide downloads with (curl, unzip)
-        run: apt-get update -qq && apt-get install -y -qq curl ca-certificates unzip python3 >/dev/null
+      - name: Only what the swift.org guide downloads with (curl, gnupg, unzip)
+        run: apt-get update -qq && apt-get install -y -qq curl ca-certificates gnupg unzip python3 >/dev/null
       - name: swift.org guide - toolchain with swiftly
         run: |
           curl -fsSLO "https://download.swift.org/swiftly/linux/swiftly-$(uname -m).tar.gz"

@@ -26,7 +26,7 @@ for i, b in enumerate(blocks):
         runs = []
         targets = ["TestingTests", "TestingMacrosTests", "NonisolatedNonsendingByDefaultTests"] if "list" not in b else ["TestingTests"]
         for t in targets:
-            runs.append(b.replace("{YOURTARGET}", t).replace("foodTruckExists", "Swift.Environment"))
+            runs.append(b.replace("{YOURTARGET}", t).replace("foodTruckExists", "variadicCStringArguments"))
         b = "\n".join(runs)
     if no_device:
         b = drop_device(b)
